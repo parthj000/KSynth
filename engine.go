@@ -1,15 +1,18 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"math"
+
 	"github.com/ebitengine/oto/v3"
 )
 
 type Voice struct {
-	buffer []float32
-	pos    int
+	freq   float64
+	phase  float64
 	active bool
 }
-
 type Engine struct {
 	voices [32]Voice
 }
@@ -19,12 +22,12 @@ type AudioStream struct {
 	buffer []float32
 }
 
-func (e *Engine) Trigger(buf []float32) {
-
+func (e *Engine) Trigger(freq float64) {
+	fmt.Println(e.voices)
 	for i := 0; i < 32; i++ {
 		if !e.voices[i].active {
-			e.voices[i].buffer = buf
-			e.voices[i].pos = 0
+			e.voices[i].freq = freq
+			e.voices[i].phase = 0
 			e.voices[i].active = true
 			return
 		}
@@ -32,33 +35,50 @@ func (e *Engine) Trigger(buf []float32) {
 }
 
 func (e *Engine) Mix(out []float32) {
-	for i := range out {
+	sampleRate := 44100.0
 
+	for i := range out {
 		sum := float32(0)
 
 		for v := 0; v < 32; v++ {
-
 			voice := &e.voices[v]
 
 			if !voice.active {
 				continue
 			}
 
-			if voice.pos >= len(voice.buffer) {
-				voice.active = false
-				continue
+			sample := math.Sin(2 * math.Pi * voice.phase)
+
+			voice.phase += voice.freq / sampleRate
+
+			if voice.phase >= 1 {
+				voice.phase -= 1
 			}
 
-			sum += voice.buffer[voice.pos]
-			voice.pos++
+			sum += float32(sample * 0.2)
+		}
+
+		if sum > 1 {
+			sum = 1
+		}
+		if sum < -1 {
+			sum = -1
 		}
 
 		out[i] = sum
 	}
 }
 
-func startAudio(e *Engine) {
+func (e *Engine) Vanish(index int) error {
+	if index < 0 || index >= len(e.voices) {
+		return errors.New("invalid voice index")
+	}
 
+	e.voices[index].active = false
+	return nil
+}
+
+func startAudio(e *Engine) {
 	ctx, ready, err := oto.NewContext(&oto.NewContextOptions{
 		SampleRate:   44100,
 		ChannelCount: 1,

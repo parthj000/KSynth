@@ -2,44 +2,14 @@ package main
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/eiannone/keyboard"
 )
 
-type Calculator struct {
-	Name string
-}
-
-func (calc *Calculator) add(a int, b int) int {
-	return a + b
-}
-
-func generateSine(freq float64, duration float64) []float32 {
-
-	sampleRate := 44100
-	totalSamples := int(duration * float64(sampleRate))
-
-	buf := make([]float32, totalSamples)
-
-	for i := 0; i < totalSamples; i++ {
-
-		// time is 1/frequency
-		//
-		t := float64(i) / float64(sampleRate)
-
-		//sin wave coordinate
-		val := math.Sin(2 * math.Pi * freq * t)
-
-		// amplitude
-		buf[i] = float32(val * 0.3) // volume
-	}
-
-	return buf
-}
 func main() {
 
 	engine := &Engine{}
+	fmt.Println((*engine).voices)
 	startAudio(engine)
 
 	err := keyboard.Open()
@@ -51,11 +21,23 @@ func main() {
 	}()
 
 	fmt.Println("Hi the stimulator is started")
-	// sine1 := generateSine(440, 0.1)
-	sine2 := generateSine(660, 0.05)
+
+	var freqMap = map[rune]float64{
+		'a': 261.63, // C4
+		's': 293.66, // D4
+		'd': 329.63, // E4
+		'f': 349.23, // F4
+		'g': 392.00, // G4
+		'h': 440.00, // A4
+		'w': 277.18, // C#4
+		'e': 311.13, // D#4
+		't': 369.99, // F#4
+		'y': 415.30, // G#4
+		'u': 466.16, // A#4
+	}
 
 	for {
-		_, key, err := keyboard.GetKey()
+		char, key, err := keyboard.GetKey()
 		if err != nil {
 			panic(err)
 		}
@@ -64,8 +46,21 @@ func main() {
 			break
 		}
 
-		engine.Trigger(sine2)
+		if freq, ok := freqMap[char]; ok {
+			engine.Trigger(freq)
+			continue
+		}
 
-		// fmt.Printf("You pressed: rune %q, key %X\n", char, key)
+		switch char {
+
+		case 'v':
+			fmt.Println("Voices:", engine.voices)
+
+		case 'k':
+			var input int
+			fmt.Print("Enter voice index: ")
+			fmt.Scan(&input)
+			engine.Vanish(input)
+		}
 	}
 }
