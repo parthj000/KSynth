@@ -3,9 +3,11 @@ module KSynth
 go 1.24.0
 
 require (
-	github.com/ebitengine/oto/v3 v3.4.0 // indirect
+	github.com/ebitengine/oto/v3 v3.4.0
+	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
+)
+
+require (
 	github.com/ebitengine/purego v0.9.0 // indirect
-	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203 // indirect
-	github.com/hajimehoshi/oto/v2 v2.4.3 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 )
