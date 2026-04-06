@@ -4,11 +4,22 @@ import "sync"
 
 type Voice struct {
 	Freq             float64
+	Key              rune
+	Label            string
 	Phase            float64
 	Active           bool
 	Sustained        bool
 	RemainingSamples int
 	TotalSamples     int
+}
+
+type VoiceInfo struct {
+	Index     int
+	Key       rune
+	Label     string
+	Freq      float64
+	Sustained bool
+	SoundMode SoundMode
 }
 
 type SequenceEvent struct {

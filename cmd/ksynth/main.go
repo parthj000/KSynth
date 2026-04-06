@@ -56,6 +56,19 @@ func main() {
 		'u': 466.16,
 	}
 	octaveShift := 0
+	noteLabelMap := map[rune]string{
+		'a': "C4",
+		's': "D4",
+		'd': "E4",
+		'f': "F4",
+		'g': "G4",
+		'h': "A4",
+		'w': "C#4",
+		'e': "D#4",
+		't': "F#4",
+		'y': "G#4",
+		'u': "Bb4",
+	}
 
 	for {
 		char, key, err := keyboard.GetKey()
@@ -124,14 +137,14 @@ func main() {
 
 		if freq, ok := freqMap[char]; ok {
 			freq *= math.Pow(2, float64(octaveShift))
-			engine.Trigger(freq)
+			engine.TriggerLabeled(freq, char, shiftedNoteLabel(noteLabelMap[char], octaveShift))
 			seq.RecordNote(freq)
 			continue
 		}
 
 		switch char {
 		case 'v':
-			fmt.Println("Voices:", engine.SnapshotVoices())
+			printActiveVoices(engine.ActiveVoices())
 		case 'j':
 			index, sustained, err := engine.ToggleSustainLastVoice()
 			if err != nil {
@@ -183,4 +196,44 @@ func printHelp() {
 	fmt.Println("Export:")
 	fmt.Println("  Press r while running, then enter a duration in seconds.")
 	fmt.Println("  KSynth writes a wav file into the current directory.")
+}
+
+func printActiveVoices(voices []audio.VoiceInfo) {
+	if len(voices) == 0 {
+		fmt.Println("No active voices")
+		return
+	}
+
+	fmt.Println("Active voices:")
+	for _, voice := range voices {
+		label := voice.Label
+		if label == "" {
+			label = "unknown"
+		}
+
+		if voice.Key != 0 {
+			fmt.Printf("[%d] %s key=%c freq=%.2fHz sustained=%t mode=%s\n", voice.Index, label, voice.Key, voice.Freq, voice.Sustained, voice.SoundMode)
+			continue
+		}
+
+		fmt.Printf("[%d] %s freq=%.2fHz sustained=%t mode=%s\n", voice.Index, label, voice.Freq, voice.Sustained, voice.SoundMode)
+	}
+}
+
+func shiftedNoteLabel(base string, octaveShift int) string {
+	if base == "" {
+		return ""
+	}
+
+	i := len(base) - 1
+	for i >= 0 && base[i] >= '0' && base[i] <= '9' {
+		i--
+	}
+	if i == len(base)-1 {
+		return base
+	}
+
+	var octave int
+	fmt.Sscanf(base[i+1:], "%d", &octave)
+	return fmt.Sprintf("%s%d", base[:i+1], octave+octaveShift)
 }

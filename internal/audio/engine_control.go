@@ -21,7 +21,20 @@ func (e *Engine) Trigger(freq float64) {
 
 	for i := 0; i < len(e.voices); i++ {
 		if !e.voices[i].Active {
-			e.startVoice(i, freq, e.defaultDuration, false)
+			e.startVoice(i, freq, "", 0, e.defaultDuration, false)
+			e.lastTriggeredIdx = i
+			return
+		}
+	}
+}
+
+func (e *Engine) TriggerLabeled(freq float64, key rune, label string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	for i := 0; i < len(e.voices); i++ {
+		if !e.voices[i].Active {
+			e.startVoice(i, freq, label, key, e.defaultDuration, false)
 			e.lastTriggeredIdx = i
 			return
 		}
@@ -40,7 +53,7 @@ func (e *Engine) TriggerOnVoice(index int, freq float64, durationSamples int, su
 		durationSamples = e.defaultDuration
 	}
 
-	e.startVoice(index, freq, durationSamples, sustained)
+	e.startVoice(index, freq, "", 0, durationSamples, sustained)
 	if index != len(e.voices)-1 {
 		e.lastTriggeredIdx = index
 	}
@@ -91,6 +104,29 @@ func (e *Engine) SnapshotVoices() [32]Voice {
 	return e.voices
 }
 
+func (e *Engine) ActiveVoices() []VoiceInfo {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	voices := make([]VoiceInfo, 0, len(e.voices))
+	for i, voice := range e.voices {
+		if !voice.Active {
+			continue
+		}
+
+		voices = append(voices, VoiceInfo{
+			Index:     i,
+			Key:       voice.Key,
+			Label:     voice.Label,
+			Freq:      voice.Freq,
+			Sustained: voice.Sustained,
+			SoundMode: e.soundMode,
+		})
+	}
+
+	return voices
+}
+
 func (e *Engine) SetSoundMode(mode SoundMode) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -111,8 +147,10 @@ func (e *Engine) SoundMode() SoundMode {
 	return e.soundMode
 }
 
-func (e *Engine) startVoice(index int, freq float64, durationSamples int, sustained bool) {
+func (e *Engine) startVoice(index int, freq float64, label string, key rune, durationSamples int, sustained bool) {
 	e.voices[index].Freq = freq
+	e.voices[index].Key = key
+	e.voices[index].Label = label
 	e.voices[index].Phase = 0
 	e.voices[index].Active = true
 	e.voices[index].Sustained = sustained
