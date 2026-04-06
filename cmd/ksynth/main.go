@@ -15,6 +15,7 @@ import (
 func main() {
 	help := flag.Bool("help", false, "show KSynth usage")
 	flag.BoolVar(help, "h", false, "show KSynth usage")
+	sound := flag.String("sound", string(audio.SoundModeOrgan), "initial sound mode: sine, piano, organ")
 	flag.Parse()
 
 	if *help {
@@ -24,6 +25,9 @@ func main() {
 	}
 
 	engine := audio.NewEngine(0.3)
+	if err := engine.SetSoundMode(audio.SoundMode(*sound)); err != nil {
+		panic(err)
+	}
 	seq := sequencer.NewBank()
 	recorder := audio.StartAudio(engine)
 
@@ -67,6 +71,27 @@ func main() {
 		switch char {
 		case '1', '2', '3', '4':
 			seq.SelectSlot(int(char - '1'))
+			continue
+		case '7':
+			if err := engine.SetSoundMode(audio.SoundModeSine); err != nil {
+				fmt.Println("Sound:", err)
+				continue
+			}
+			fmt.Println("Sound mode: sine")
+			continue
+		case '8':
+			if err := engine.SetSoundMode(audio.SoundModePiano); err != nil {
+				fmt.Println("Sound:", err)
+				continue
+			}
+			fmt.Println("Sound mode: piano")
+			continue
+		case '9':
+			if err := engine.SetSoundMode(audio.SoundModeOrgan); err != nil {
+				fmt.Println("Sound:", err)
+				continue
+			}
+			fmt.Println("Sound mode: organ")
 			continue
 		case '+':
 			octaveShift++
@@ -138,6 +163,7 @@ func printControls() {
 	fmt.Println("Terminal synth and sequencer")
 	fmt.Println("Note keys: a s d f g h with sharps on w e t y u")
 	fmt.Println("Press 1-4 to select a sequencer slot")
+	fmt.Println("Press 7 for sine, 8 for piano, 9 for organ")
 	fmt.Println("Press Space to start/stop recording on the selected slot")
 	fmt.Println("Press + or - to shift octave up or down")
 	fmt.Println("Press r to export live output to a wav file")
@@ -150,6 +176,7 @@ func printHelp() {
 	fmt.Println("")
 	fmt.Println("Flags:")
 	fmt.Println("  -h, -help    Show this help message")
+	fmt.Println("  -sound       Initial sound mode: sine, piano, organ")
 	fmt.Println("")
 	printControls()
 	fmt.Println("")

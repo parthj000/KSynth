@@ -2,7 +2,6 @@ package audio
 
 import (
 	"errors"
-	"math"
 	"sync"
 
 	"github.com/ebitengine/oto/v3"
@@ -30,12 +29,21 @@ type SequenceLoop struct {
 	enabled  bool
 }
 
+type SoundMode string
+
+const (
+	SoundModeSine  SoundMode = "sine"
+	SoundModePiano SoundMode = "piano"
+	SoundModeOrgan SoundMode = "organ"
+)
+
 type Engine struct {
 	mu               sync.Mutex
 	voices           [32]Voice
 	defaultDuration  int
 	lastTriggeredIdx int
 	sequences        [4]SequenceLoop
+	soundMode        SoundMode
 }
 
 type AudioStream struct {
@@ -47,10 +55,10 @@ type AudioStream struct {
 const (
 	SampleRate        = 44100.0
 	streamBufferSize  = 64
-	defaultNoteVolume = 0.2
-	sequenceVolume    = 0.15
-	attackSamples     = 64
-	releaseSamples    = 192
+	defaultNoteVolume = 0.22
+	sequenceVolume    = 0.17
+	organAttackSamples  = 96
+	organReleaseSamples = 900
 )
 
 func NewEngine(noteDurationSeconds float64) *Engine {
@@ -62,6 +70,7 @@ func NewEngine(noteDurationSeconds float64) *Engine {
 	return &Engine{
 		defaultDuration:  durationSamples,
 		lastTriggeredIdx: -1,
+		soundMode:        SoundModeOrgan,
 	}
 }
 
@@ -135,7 +144,12 @@ func (e *Engine) Mix(out []float32) {
 				continue
 			}
 
-			sample := math.Sin(2 * math.Pi * voice.Phase)
+			elapsed := voice.TotalSamples - voice.RemainingSamples
+			if elapsed < 0 {
+				elapsed = 0
+			}
+
+			sample := sampleForMode(e.soundMode, voice.Phase, elapsed)
 
 			voice.Phase += voice.Freq / SampleRate
 
@@ -212,6 +226,26 @@ func (e *Engine) SnapshotVoices() [32]Voice {
 	return e.voices
 }
 
+func (e *Engine) SetSoundMode(mode SoundMode) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	switch mode {
+	case SoundModeSine, SoundModePiano, SoundModeOrgan:
+		e.soundMode = mode
+		return nil
+	default:
+		return errors.New("invalid sound mode")
+	}
+}
+
+func (e *Engine) SoundMode() SoundMode {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	return e.soundMode
+}
+
 func (e *Engine) startVoice(index int, freq float64, durationSamples int, sustained bool) {
 	e.voices[index].Freq = freq
 	e.voices[index].Phase = 0
@@ -240,7 +274,7 @@ func (e *Engine) mixSequenceSample() (float32, int) {
 
 			elapsed := currentSample - event.StartSample
 			phase := float64(elapsed) * event.Freq / SampleRate
-			sum += math.Sin(2*math.Pi*phase) * sequenceVolume * sequenceEnvelope(elapsed, event.LengthSample)
+			sum += sampleForMode(e.soundMode, phase, elapsed) * sequenceVolume * sequenceEnvelope(e.soundMode, elapsed, event.LengthSample)
 			activeEvents++
 		}
 
@@ -259,13 +293,14 @@ func (e *Engine) voiceEnvelope(voice *Voice) float64 {
 		elapsed = 0
 	}
 
+	attackSamples, releaseSamples, sustainedLevel := envelopeForMode(e.soundMode)
 	attack := envelopeRamp(elapsed, attackSamples)
 	if voice.Sustained {
-		return attack
+		return attack * sustainedLevel
 	}
 
 	release := envelopeRamp(voice.RemainingSamples, releaseSamples)
-	return attack * release
+	return attack * release * bodyForMode(e.soundMode, elapsed)
 }
 
 func (s *AudioStream) Read(p []byte) (int, error) {
