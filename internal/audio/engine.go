@@ -39,8 +39,9 @@ type Engine struct {
 }
 
 type AudioStream struct {
-	engine *Engine
-	buffer []float32
+	engine   *Engine
+	buffer   []float32
+	recorder *Recorder
 }
 
 const (
@@ -64,7 +65,7 @@ func NewEngine(noteDurationSeconds float64) *Engine {
 	}
 }
 
-func StartAudio(e *Engine) {
+func StartAudio(e *Engine) *Recorder {
 	ctx, ready, err := oto.NewContext(&oto.NewContextOptions{
 		SampleRate:   int(SampleRate),
 		ChannelCount: 1,
@@ -77,12 +78,14 @@ func StartAudio(e *Engine) {
 	<-ready
 
 	stream := &AudioStream{
-		engine: e,
-		buffer: make([]float32, streamBufferSize),
+		engine:   e,
+		buffer:   make([]float32, streamBufferSize),
+		recorder: NewRecorder(),
 	}
 
 	player := ctx.NewPlayer(stream)
 	player.Play()
+	return stream.recorder
 }
 
 func (e *Engine) Trigger(freq float64) {
@@ -273,6 +276,8 @@ func (s *AudioStream) Read(p []byte) (int, error) {
 		p[i*2] = byte(sample)
 		p[i*2+1] = byte(sample >> 8)
 	}
+
+	s.recorder.WritePCM(p[:len(s.buffer)*2])
 
 	return len(s.buffer) * 2, nil
 }

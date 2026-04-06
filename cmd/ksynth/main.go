@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"math"
+	"path/filepath"
+	"time"
 
 	"KSynth/internal/audio"
 	"KSynth/internal/sequencer"
@@ -12,7 +14,7 @@ import (
 func main() {
 	engine := audio.NewEngine(0.3)
 	seq := sequencer.NewBank()
-	audio.StartAudio(engine)
+	recorder := audio.StartAudio(engine)
 
 	err := keyboard.Open()
 	if err != nil {
@@ -27,6 +29,7 @@ func main() {
 	fmt.Println("Press 1-4 to select a sequencer slot")
 	fmt.Println("Press Space to start/stop recording on the selected slot")
 	fmt.Println("Press + or - to shift octave up or down")
+	fmt.Println("Press r to export live output to a wav file")
 	fmt.Println("Press j to toggle sustain on the last triggered note")
 	fmt.Println("Press v to inspect voices, k to stop a voice, Esc to quit")
 
@@ -67,6 +70,20 @@ func main() {
 		case '-':
 			octaveShift--
 			fmt.Printf("Octave shift: %+d\n", octaveShift)
+			continue
+		case 'r':
+			var seconds float64
+			fmt.Print("Export duration in seconds: ")
+			fmt.Scan(&seconds)
+
+			filename := fmt.Sprintf("recording-%s.wav", time.Now().Format("20060102-150405"))
+			path := filepath.Join(".", filename)
+			if err := recorder.Start(path, seconds); err != nil {
+				fmt.Println("Export:", err)
+				continue
+			}
+
+			fmt.Printf("Exporting live output to %s for %.2f seconds\n", filename, seconds)
 			continue
 		}
 
