@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math"
 	"path/filepath"
@@ -12,6 +13,16 @@ import (
 )
 
 func main() {
+	help := flag.Bool("help", false, "show KSynth usage")
+	flag.BoolVar(help, "h", false, "show KSynth usage")
+	flag.Parse()
+
+	if *help {
+		printBanner()
+		printHelp()
+		return
+	}
+
 	engine := audio.NewEngine(0.3)
 	seq := sequencer.NewBank()
 	recorder := audio.StartAudio(engine)
@@ -24,14 +35,8 @@ func main() {
 		_ = keyboard.Close()
 	}()
 
-	fmt.Println("Hi the stimulator is started")
-	fmt.Println("Note keys: a s d f g h with sharps on w e t y u")
-	fmt.Println("Press 1-4 to select a sequencer slot")
-	fmt.Println("Press Space to start/stop recording on the selected slot")
-	fmt.Println("Press + or - to shift octave up or down")
-	fmt.Println("Press r to export live output to a wav file")
-	fmt.Println("Press j to toggle sustain on the last triggered note")
-	fmt.Println("Press v to inspect voices, k to stop a voice, Esc to quit")
+	printBanner()
+	printControls()
 
 	freqMap := map[rune]float64{
 		'a': 261.63,
@@ -118,4 +123,37 @@ func main() {
 			}
 		}
 	}
+}
+
+func printBanner() {
+	fmt.Println(` _  __ ____              _   _     
+| |/ // ___| _   _ _ __ | |_| |__  
+| ' / \___ \| | | | '_ \| __| '_ \ 
+| . \  ___) | |_| | | | | |_| | | |
+|_|\_\|____/ \__, |_| |_|\__|_| |_|
+             |___/                 `)
+}
+
+func printControls() {
+	fmt.Println("Terminal synth and sequencer")
+	fmt.Println("Note keys: a s d f g h with sharps on w e t y u")
+	fmt.Println("Press 1-4 to select a sequencer slot")
+	fmt.Println("Press Space to start/stop recording on the selected slot")
+	fmt.Println("Press + or - to shift octave up or down")
+	fmt.Println("Press r to export live output to a wav file")
+	fmt.Println("Press j to toggle sustain on the last triggered note")
+	fmt.Println("Press v to inspect voices, k to stop a voice, Esc to quit")
+}
+
+func printHelp() {
+	fmt.Println("Usage: ksynth [flags]")
+	fmt.Println("")
+	fmt.Println("Flags:")
+	fmt.Println("  -h, -help    Show this help message")
+	fmt.Println("")
+	printControls()
+	fmt.Println("")
+	fmt.Println("Export:")
+	fmt.Println("  Press r while running, then enter a duration in seconds.")
+	fmt.Println("  KSynth writes a wav file into the current directory.")
 }
