@@ -172,7 +172,7 @@ Build a local Windows binary:
 go build -o ksynth.exe ./cmd/ksynth
 ```
 
-Build Windows release archives into `dist/` with GoReleaser:
+Build release archives into `dist/` for Windows and Linux (`amd64`, `arm64`) with GoReleaser:
 
 ```powershell
 goreleaser release --snapshot --clean
